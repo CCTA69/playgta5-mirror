@@ -4,6 +4,14 @@ Download the complete browser-game snapshot, including **all 12,482 files in the
 
 The game data is approximately **21.2 GB (19.7 GiB)**. It is included in the repository's **GitHub Release downloads**, not ordinary Git commits, because some individual game files exceed GitHub's 100 MiB Git limit. **Code → Download ZIP alone does not contain the game data.**
 
+**Use `Download-Game.cmd` after extracting the repository ZIP to install every part automatically. Part 01 alone is not playable.** “Online” in this guide means a website serving the browser game; it does not add GTA Online or multiplayer.
+
+## Stuck at 66%? Check this first
+
+In **Chrome**, open `chrome://settings/system`, turn **Use graphics acceleration when available** **ON**, then click **Relaunch**. In **Edge**, open Settings → System and performance, enable the equivalent graphics acceleration setting, then restart Edge. Reopen the game after restarting the browser.
+
+Chrome disables WebGPU when graphics acceleration is switched off ([Chrome troubleshooting guide](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips)). This can fix one cause of a loading freeze; **66% is not a diagnosis**, and this does not fix every GPU/driver or missing-file error. If it still stops, open `http://localhost:8000/__support/`, copy the diagnostics, and report the **first red console error** after reloading. Check the troubleshooting section below before downloading the game again.
+
 ## Download and play on Windows
 
 1. Click **Code → Download ZIP** on this page, then extract the ZIP completely. Or clone this repository.
@@ -33,6 +41,7 @@ Download the latest repository ZIP and copy its helper files **and the `support`
 ## Requirements
 
 - 64-bit Windows for the bundled runtime; a recent **Chrome or Edge with WebGPU and hardware acceleration** enabled.
+- The engine requires **WebAssembly Memory64** as well as WebGPU. Use a current browser; older versions can fail before rendering. The compatibility report checks Memory64 support.
 - A capable GPU and sufficient memory. Tested locally on an RTX 3070 / 32 GB RAM computer; performance on other hardware is not guaranteed.
 - About **25 GB free space** for automatic installation. Allow **45 GB** if keeping all manually downloaded ZIP files alongside the extracted game.
 - Internet access for the initial roughly 21 GB download. The local game server serves the downloaded assets afterward.
@@ -43,6 +52,8 @@ For lower-memory loading, try **http://localhost:8000/?low=1&fps=30&res=1280x720
 ## Manual download
 
 Open [Releases → Full game v1](https://github.com/alihammoud21/playgta5/releases/tag/full-game-v1). Download **every `playgta5-part-*.zip` file** and **`file-inventory.json`**. These are independent ZIP archives, not split fragments: extract **all** of them into the **same empty folder**, and put `file-inventory.json` there too. One archive contains the launcher and runtime; the others contain the remaining mirror files. All parts are required.
+
+**After extracting all 14 parts**, copy the latest repository's helper files and `support` folder into that installation, replacing the older release helpers. This provides the current launcher, troubleshooting page, and verifier. Keep `mirror` and `runtime`. If your browser says “Site wasn't available” for a ZIP, that part has not finished downloading; the inventory file cannot replace it.
 
 The final folder should contain:
 
@@ -71,15 +82,24 @@ The downloader does not overwrite existing files with different contents. If you
 
 On Linux, use Python 3.11+ with `python3 download_game.py`, then `python3 serve_local.py --open`. Browser/GPU support varies; Linux gameplay has not been validated. The bundled `runtime/python.exe` is Windows-only.
 
-## Vercel and online hosting
+## Online hosting and availability
 
-[Play online at playgta5-tawny.vercel.app](https://playgta5-tawny.vercel.app/) in current Chrome or Edge with graphics acceleration enabled. The game runs in your browser and loads assets from the deployment as needed. No Python installation or local server is needed for the online version. The first load can take several minutes. Hosted defaults are lower-memory, 720p, and 30 FPS; explicit `low`, `res`, and `fps` query parameters override them.
+**The old Vercel link is currently disabled (HTTP 402 / `DEPLOYMENT_DISABLED`).** The full deployment succeeded, but the approximately 21 GB game exceeded the account's **10 GB Hobby deployment-storage allowance**. The account notification confirmed the storage limit. This was a hosting-capacity problem, not a missing game file or a timed expiry. The complete game does not fit on that free Vercel plan. See [Vercel's storage-limit announcement](https://vercel.com/changelog/hobby-projects-now-retain-fewer-deployments-to-free-up-storage).
 
-`vercel.json` builds with `python3 build_web.py` and publishes `web-output/`. Use the repository root and **Other** framework preset. The build downloads one release archive at a time, verifies archive and extracted-file SHA-256 checksums, and extracts game assets only. It replaces the I/O worker's batch-prefetch call with static range reads, so no Python server or serverless batch endpoint is required. COOP/COEP isolation headers enable the shared-memory game workers. Download/help instructions are preserved at [/help/](https://playgta5-tawny.vercel.app/help/).
+The repository's Vercel configuration now publishes only the small help site in `public/`; it no longer rebuilds the 21 GB game on every push. This change alone does not remove existing deployment storage or reactivate a disabled account. Old large deployments must be reviewed in the Vercel dashboard before that URL can be restored.
 
-The deployment contains about 21 GB of assets; builds require substantial disk space and bandwidth. This uses Vercel's build output, not a 21 GB CLI source upload. [Vercel resource limits](https://vercel.com/docs/limits) and your plan's traffic allowance still apply. Runtime performance and graphics compatibility depend on the visitor's device; successful deployment does not certify every GPU or Mac.
+A **Cloudflare Pages static deployment is being validated**. Its current free limits allow 20,000 files with a maximum of 25 MiB each, and static requests are free and unlimited ([limits](https://developers.cloudflare.com/pages/platform/limits/), [pricing](https://developers.cloudflare.com/pages/functions/pricing/)). `build_pages.py` verifies the downloaded mirror and splits large assets into 4 MiB pieces. The browser loader reconstructs byte ranges using cached pieces; it does not depend on a server implementing HTTP Range, paid R2 storage, or Pages Functions. Generated output stays out of Git.
 
-For a local deployment build, run `python3 build_web.py --source /path/to/playgta5.com`. The source is fully verified and is not patched in place. Generated output is ignored by Git; original release archives and the local launcher remain unchanged.
+To build after downloading the game:
+
+```sh
+python3 build_pages.py
+npx wrangler@4.149.0 pages deploy pages-output --project-name YOUR_PROJECT --branch main
+```
+
+Building needs roughly **20 GB additional free disk space** alongside the local installation. The generated game uses HTTPS and COOP/COEP headers for WebGPU and shared-memory workers. Hosted defaults are lower-memory, 720p, and 30 FPS; explicit `low`, `res`, and `fps` URL parameters override them. The support page is at `/__support/`, with download instructions at `/help/`.
+
+No free host can promise permanent availability or a guaranteed month of service. Provider limits, account status, policies, and rights-holder requests still apply. The release downloads and local launcher remain a fallback that does not depend on the public game website being online. A successful upload or network check does not certify gameplay on every GPU, Mac, or Android device.
 
 ## Troubleshooting
 
@@ -87,20 +107,29 @@ For a local deployment build, run `python3 build_web.py --source /path/to/playgt
 - **Address already in use:** another server is using port 8000. Use its existing tab, close that server, or run `runtime\python.exe serve_local.py --port 8001 --open`.
 - **WebGPU unavailable:** update Chrome/Edge and your graphics driver; enable browser hardware acceleration.
 - **Out of memory / tab crash:** close other tabs and applications, then try the lower-memory URL above.
+- **“No progress” despite free disk space:** disk space, system RAM, and GPU memory are different resources. The loading timer does not identify the cause. Updated launch helpers display a neutral stall message and a **Help / browser checks** link. Share the last loading step and first error rather than deleting files or buying RAM based on the timer.
+- **`memory access out of bounds`:** this is a WebAssembly memory-access error, not proof of insufficient physical RAM. Verify the files and capture the first error/stack trace, your installed RAM and GPU, mode/map, and the action or loading step that triggered it. The browser's memory estimate is not a measurement of installed RAM. See [issue #9](https://github.com/alihammoud21/playgta5/issues/9).
+- **Stuck at 24%:** first distinguish the installer's download percentage from the in-game loading percentage. Confirm all 14 parts installed, run verification, then collect the first red console error and any failed Network request with its HTTP status. See [issue #10](https://github.com/alihammoud21/playgta5/issues/10).
+- **Low FPS:** start at `?low=1&fps=30&res=1280x720`. If stable, compare `?low=1&fps=60&res=1280x720` or `?low=1&fps=60&res=960x540` in the same place after shader preparation. The `fps` value is a cap, not a performance guarantee. Check the active GPU in `chrome://gpu` / `edge://gpu`. Native GTA V and this browser build can perform differently.
+- **LAN / port forwarding:** the supplied server binds to `127.0.0.1`. A plain `http://<PC-IP>:8000` address does not get localhost's secure-context exception. Remote hosting needs trusted HTTPS and the isolation headers; forwarding a port or changing browsers alone does not supply them. Use the public HTTPS site or a correctly configured HTTPS reverse proxy. Android gameplay remains untested.
 - **Graphics device lost / `DXGI_ERROR_DEVICE_HUNG`:** this reports a GPU device failure. Close all game tabs, stop the game server with Ctrl+C, then restart once. Update the browser and GPU driver (macOS updates include its drivers), and check `chrome://gpu` or `edge://gpu` for hardware acceleration and Problems Detected. Try the lower-memory 720p link. Do not change Windows TDR registry settings or enable unsafe browser flags. If it persists, post your GPU model, OS/browser versions, when it happens, and the first console error to [issue #1](https://github.com/alihammoud21/playgta5/issues/1). The exact cause is still under investigation.
 - **Black world but audio/map/menu work:** verify the files, try the lower-memory link, and compare Story and Sandbox. Open developer tools (F12 on Windows, Option+Command+I on Mac), capture the first shader/WebGPU error and any failed asset request, and post them with the compatibility report to [issue #2](https://github.com/alihammoud21/playgta5/issues/2). HUD rendering alone does not prove that world rendering is working. Do not delete saves as a first troubleshooting step.
 - **Download failure:** rerun `Download-Game.cmd`. Completed, verified archives are remembered. Available disk space and network restrictions can affect downloading.
-- **Windows security warning:** inspect the scripts and files before choosing to run them. Do not disable antivirus or system-wide security settings.
+- **Windows security warning:** distinguish an unsigned/unrecognized-app (SmartScreen) warning from a named antivirus detection. Record the exact warning, threat name if shown, affected filename, and download URL. Do not run a file that has a malware detection, disable antivirus, add exclusions, or restore a quarantined file just to launch the game. Matching SHA-256 checksums confirm the published bytes; they do not prove that a file is harmless.
 
-The compatibility page checks basic WebGPU device creation, shared-memory/isolation support, and a four-byte range read of the real WebAssembly file. It does **not** test every shader or certify gameplay. Diagnostics stay in your browser until you choose to copy and share them. See [Chrome's WebGPU troubleshooting guide](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips) for browser checks.
+The compatibility page checks WebAssembly Memory64, basic WebGPU device creation, shared-memory/isolation support, and a four-byte range read of the real WebAssembly file. It does **not** test every shader or certify gameplay. Diagnostics stay in your browser until you choose to copy and share them. See [Chrome's WebGPU troubleshooting guide](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips) for browser checks.
 
 ## Development checks
 
-Run `python3 -m unittest discover -s tests -v`, `node --check support/check.js`, and `bash -n mac-launcher.sh`. Tests cover installer preservation/resume, checksums, unsafe paths, isolation headers, range reads, both batch formats, and malformed requests. An existing mirror can be tested without copying it: `python3 serve_local.py --root /path/to/playgta5.com --port 8001 --open`.
+Run `python3 -m unittest discover -s tests -v`, `node --check support/check.js`, and `bash -n mac-launcher.sh`. Tests cover the installer bundle, preservation/resume, checksums, unsafe paths, isolation headers, range reads, both batch formats, malformed requests, hosted startup checks, and cached piece reconstruction. With Node 24+, `node tests/check_hosted_transport.cjs https://YOUR_PROJECT.pages.dev` checks deployed headers, cross-piece ranges, the complete engine checksum, streaming compilation, and real 404 responses against the local mirror. This is a network/engine test, not a gameplay test. An existing mirror can be tested without copying it: `python3 serve_local.py --root /path/to/playgta5.com --port 8001 --open`.
+
+## Community collaboration
+
+We have [invited Michael-McGehee1 to discuss a separate public collaboration repository](https://github.com/alihammoud21/playgta5/issues/6#issuecomment-6109366552) for controller support, cheats, performance work, and other community improvements. A shared repository has not been agreed yet. Its confirmed URL can be linked here once both maintainers agree; features shown in that discussion are not part of this verified release.
 
 ## Scope and provenance
 
-This package contains only the original local game mirror, a local server, launch/download/verification scripts, and a minimal Python runtime. It does **not** contain hosting credentials, Netlify/Cloudflare configuration, personal saved games, Ollama, or the unfinished police-mode experiment. The double-nested source mirror folder is normalized to `mirror/playgta5.com` without changing its contents.
+This repository provides compiled game downloads and cross-platform launch, installation, verification, diagnostics, and static-hosting tools. It does **not** contain hosting credentials, personal saved games, Ollama, or the unfinished police-mode experiment. Original game assets remain unchanged in `mirror/playgta5.com`; hosting builds create their patches in a separate output directory.
 
 This package is not affiliated with or endorsed by Rockstar Games, Take-Two, or that project's authors.
 

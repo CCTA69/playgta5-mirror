@@ -101,6 +101,21 @@ class ServerTests(unittest.TestCase):
         self.assertIn(b'check.js', body)
         self.assertEqual(self.request('GET', '/__support/check.js')[0], 200)
 
+    def test_served_help_does_not_modify_verified_game_file(self):
+        path = serve_local.ROOT / 'index.html'
+        original = path.read_bytes()
+        game = b'<body>game-progress: the device may be out of memory. Close other tabs, or reload.</body>'
+        try:
+            path.write_bytes(game)
+            status, headers, body = self.request('GET', '/?low=1')
+            self.assertEqual(status, 200)
+            self.assertIn(b'Help / browser checks', body)
+            self.assertNotIn(b'the device may be out of memory', body)
+            self.assertEqual(int(headers['Content-Length']), len(body))
+            self.assertEqual(path.read_bytes(), game)
+        finally:
+            path.write_bytes(original)
+
     def test_ranges_and_unsatisfiable_range(self):
         for range_header, expected in [('bytes=2-5', b'2345'), ('bytes=-3', b'789'), ('bytes=8-', b'89')]:
             with self.subTest(range=range_header):

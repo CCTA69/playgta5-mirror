@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 
 from download_game import digest, extract_payload, target_path
+from serve_local import improve_game_page
 
 HERE = Path(__file__).resolve().parent
 PREFIX = 'mirror/playgta5.com/'
@@ -26,7 +27,7 @@ def patch_page(code):
     new = old + "\n// Conservative hosted defaults; explicit URL settings still take precedence.\nfor (const [key, value] of Object.entries({low:'1', fps:'30', res:'1280x720'})) { if (!q.has(key)) q.set(key, value); }"
     if code.count(old) != 1:
         raise ValueError('Unrecognized game page: expected exactly one query parser')
-    return code.replace(old, new)
+    return improve_game_page(code.replace(old, new))
 
 
 def finish(output):

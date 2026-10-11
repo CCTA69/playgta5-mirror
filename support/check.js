@@ -3,10 +3,15 @@ const report = { browser: navigator.userAgent, secureContext: isSecureContext,
   crossOriginIsolated, sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
   offscreenCanvas: typeof OffscreenCanvas !== 'undefined', hardwareConcurrency: navigator.hardwareConcurrency,
   deviceMemoryGB: navigator.deviceMemory || 'not reported' };
+report.deviceMemoryNote = 'Approximate browser-provided value; report installed RAM separately.';
+// Tiny module declaring a shared 64-bit memory, matching the engine's requirement.
+report.wasmMemory64 = typeof WebAssembly !== 'undefined' && WebAssembly.validate(
+  new Uint8Array([0,97,115,109,1,0,0,0,5,4,1,7,0,1]));
 const output = document.getElementById('report');
 async function check() {
   let device;
   try {
+    if (!report.wasmMemory64) throw new Error('WebAssembly Memory64 is unavailable. Update to current Chrome or Edge.');
     const response = await fetch('/', { cache: 'no-store' });
     report.pageHTTP = response.status;
     const html = await response.text();

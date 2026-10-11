@@ -13,6 +13,17 @@ if not (ROOT / 'index.html').is_file():
 mimetypes.add_type('application/wasm', '.wasm')
 mimetypes.add_type('text/javascript', '.js')
 
+def improve_game_page(code):
+    """Improve support text at serving/build time, preserving verified release files."""
+    if 'game-progress' not in code:
+        return code
+    code = code.replace(': the device may be out of memory. Close other tabs, or reload.',
+                        ': loading has paused. Use Help / browser checks and collect the first console error.')
+    code = code.replace('If the tab shows "Aw, Snap!" or SIGILL it ran out of memory.',
+                        'A tab crash needs its error details; it does not by itself prove insufficient RAM.')
+    link = '<a href="/__support/" target="_blank" rel="noopener" style="position:fixed;top:12px;right:12px;z-index:10000;background:#182621;color:#fff;padding:10px 14px;border-radius:5px;font:14px system-ui;text-decoration:none">Help / browser checks</a>'
+    return code.replace('<body>', '<body>\n' + link, 1)
+
 class Handler(SimpleHTTPRequestHandler):
     def setup(self):
         super().setup()
@@ -31,6 +42,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def send_head(self):
         self.byte_range = None
+        if urlsplit(self.path).path in ('/', '/index.html') and (ROOT / 'index.html').is_file():
+            body = improve_game_page((ROOT / 'index.html').read_text(encoding='utf-8')).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            return io.BytesIO(body)
         support_files = {'/__support/': 'index.html', '/__support/check.js': 'check.js'}
         support_name = support_files.get(urlsplit(self.path).path)
         if support_name:
