@@ -122,15 +122,3 @@ The compatibility page checks WebAssembly Memory64, basic WebGPU device creation
 ## Development checks
 
 Run `python3 -m unittest discover -s tests -v`, `node --check support/check.js`, and `bash -n mac-launcher.sh`. Tests cover the installer bundle, preservation/resume, checksums, unsafe paths, isolation headers, range reads, both batch formats, malformed requests, hosted startup checks, and cached piece reconstruction. With Node 24+, `node tests/check_hosted_transport.cjs https://YOUR_PROJECT.pages.dev` checks deployed headers, cross-piece ranges, the complete engine checksum, streaming compilation, and real 404 responses against the local mirror. This is a network/engine test, not a gameplay test. An existing mirror can be tested without copying it: `python3 serve_local.py --root /path/to/playgta5.com --port 8001 --open`.
-
-## Community collaboration
-
-We have [invited Michael-McGehee1 to discuss a separate public collaboration repository](https://github.com/alihammoud21/playgta5/issues/6#issuecomment-6109366552) for controller support, cheats, performance work, and other community improvements. A shared repository has not been agreed yet. Its confirmed URL can be linked here once both maintainers agree; features shown in that discussion are not part of this verified release.
-
-## Scope and provenance
-
-This repository provides compiled game downloads and cross-platform launch, installation, verification, diagnostics, and static-hosting tools. It does **not** contain hosting credentials, personal saved games, Ollama, or the unfinished police-mode experiment. Original game assets remain unchanged in `mirror/playgta5.com`; hosting builds create their patches in a separate output directory.
-
-This package is not affiliated with or endorsed by Rockstar Games, Take-Two, or that project's authors.
-
-Game names, artwork, audio, and other game assets remain the property of their respective rights holders. No ownership or redistribution license for those assets is claimed here. Availability is subject to rights-holder requests and GitHub's policies. The bundled Python runtime retains its license in `runtime/LICENSE.txt`.
