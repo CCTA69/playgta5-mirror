@@ -23,7 +23,13 @@ function networkFetch(input) {
   assert.equal(page.status, 200);
   assert.equal(page.headers.get('Cross-Origin-Opener-Policy'), 'same-origin');
   assert.equal(page.headers.get('Cross-Origin-Embedder-Policy'), 'require-corp');
-  await page.body.cancel();
+  const html = await page.text();
+  assert.ok(html.includes('/chunk-fetch.js') && html.includes('Browser startup checks failed'));
+  for (const path of ['/__support/', '/__support/check.js', '/help/']) {
+    const response = await networkFetch(origin + path);
+    assert.equal(response.status, 200, path);
+    await response.body.cancel();
+  }
   const manifestResponse = await networkFetch(origin + '/chunk-index.js');
   assert.equal(manifestResponse.status, 200);
   const manifest = JSON.parse((await manifestResponse.text()).replace(/^globalThis.GAME_CHUNKS=/, '').trim().replace(/;$/, ''));
@@ -47,6 +53,31 @@ function networkFetch(input) {
   console.log('PASS: complete hosted engine SHA-256 matches the release (' + bytes.length + ' bytes)');
   await WebAssembly.compileStreaming(context.fetch(wasmPath));
   console.log('PASS: reconstructed hosted engine compiles with streaming WebAssembly');
+  const dataFiles = Object.entries(manifest.files).filter(([path]) => path.startsWith('/data/'));
+  const large = dataFiles.filter(([, entry]) => entry.prefix).sort((a, b) => b[1].size - a[1].size);
+  for (const [path, entry] of [large[0], large[Math.floor(large.length / 2)], large[large.length - 1]]) {
+    const handle = fs.openSync('mirror/playgta5.com' + path, 'r');
+    try {
+      const end = entry.size - 1, start = Math.max(0, end - 127);
+      const expected = Buffer.alloc(end - start + 1);
+      fs.readSync(handle, expected, 0, expected.length, start);
+      const response = await context.fetch(path, {headers: {Range: `bytes=${start}-${end}`}});
+      assert.equal(response.status, 206);
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected, path);
+    } finally { fs.closeSync(handle); }
+  }
+  const small = dataFiles.filter(([, entry]) => entry.url && entry.size > 0).sort((a, b) => a[1].size - b[1].size)[0];
+  const response = await context.fetch(small[0]);
+  assert.equal(response.status, 200);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), fs.readFileSync('mirror/playgta5.com' + small[0]));
+  console.log('PASS: three real game-data archives and one unchunked asset match the release');
+  const buildFolder = fs.readdirSync('mirror/playgta5.com/b')[0];
+  for (const worker of ['loader.js', 'io_worker.js']) {
+    const response = await networkFetch(origin + '/b/' + buildFolder + '/' + worker);
+    assert.equal(response.status, 200);
+    assert.ok((await response.text()).startsWith("importScripts('/chunk-index.js', '/chunk-fetch.js');"));
+  }
+  console.log('PASS: game workers include the hosted asset adapter; help and diagnostics are reachable');
   const missing = await networkFetch(origin + '/missing-test-asset-not-in-release.bin');
   assert.equal(missing.status, 404); await missing.body.cancel();
   console.log('PASS: missing assets return 404 instead of the game HTML');

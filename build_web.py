@@ -1,4 +1,4 @@
-"""Build a static, playable Vercel deployment from the verified public release."""
+"""Build full static game assets for a host with sufficient storage; use build_pages.py for Pages."""
 import argparse
 import json
 import os

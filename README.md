@@ -1,10 +1,22 @@
-# PlayGTA5 local browser game
+# PlayGTA5 — download, play, and troubleshoot
+
+[**Download installer ZIP**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip) · [Installation](#download-and-play-on-windows) · [Mac](#download-and-play-on-mac) · [Higher-FPS setup](#performance--higher-fps) · [Report a problem](https://github.com/alihammoud21/playgta5/issues/new/choose)
+
+**Want controllers, cheats, and the experimental development map?** Use the separate [**PlayGTA5 Enhanced** repository](https://github.com/alihammoud21/playgta5-enhanced). It reuses this installation and adds a launcher, standard-gamepad input bridge, cheat-code entry panel, and access to the existing `env_test` level. These are experimental additions; they are not Michael's unreleased source or a promise of 200 FPS. This main repo remains the download, verification, compatibility, and hosting path.
 
 Download the complete browser-game snapshot, including **all 12,482 files in the `mirror` folder**. This is a compiled client snapshot, not the original game-engine source code.
 
 The game data is approximately **21.2 GB (19.7 GiB)**. It is included in the repository's **GitHub Release downloads**, not ordinary Git commits, because some individual game files exceed GitHub's 100 MiB Git limit. **Code → Download ZIP alone does not contain the game data.**
 
 **Use `Download-Game.cmd` after extracting the repository ZIP to install every part automatically. Part 01 alone is not playable.** “Online” in this guide means a website serving the browser game; it does not add GTA Online or multiplayer.
+
+| Current status | What has been checked |
+| --- | --- |
+| Full download | Fresh installation: 12,527 game/runtime files passed SHA-256 verification. |
+| Windows / Mac launch tools | Automated installation/server checks passed; Mac gameplay still needs hardware testing. |
+| Public game hosting | Vercel deployments are disabled. The replacement full-site upload failed and is being retried; no new link is gameplay-verified yet. |
+| Black world / GPU device loss | Reports remain under investigation; basic WebGPU checks do not prove world rendering. |
+| FPS | Presets below reduce rendering load. No universal 90–200 FPS result has been measured for this release. |
 
 ## Stuck at 66%? Check this first
 
@@ -14,7 +26,7 @@ Chrome disables WebGPU when graphics acceleration is switched off ([Chrome troub
 
 ## Download and play on Windows
 
-1. Click **Code → Download ZIP** on this page, then extract the ZIP completely. Or clone this repository.
+1. Download [**PlayGTA5-Installer.zip**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip), extract it completely, and open its `PlayGTA5` folder. This small ZIP contains the current installers and help tools; the next step downloads the game. Cloning this repository or using **Code → Download ZIP** also works.
 2. Double-click **`Download-Game.cmd`** in the extracted folder. It downloads every game archive from [the full-game release](https://github.com/alihammoud21/playgta5/releases/tag/full-game-v1), checks SHA-256 checksums, and extracts the complete mirror and bundled Python runtime. Keep the window open until it says **Download complete**. If interrupted, run it again to resume.
 3. Double-click **`Launch-Local.cmd`**. Keep its server window open while playing.
 4. Your browser opens **http://localhost:8000/__support/**. Review the compatibility checks, then choose the **lower-memory 720p / 30 FPS** launch option. Choose **Story Mode** or **Sandbox Mode** in the game. If your default browser is not Chrome or Edge, paste the local address into one of them.
@@ -25,7 +37,7 @@ No Python installation, Netlify account, subscription, or API key is needed on W
 ## Download and play on Mac
 
 1. Install **Python 3.11 or newer** from [python.org](https://www.python.org/downloads/macos/) and a current Chrome or Edge browser.
-2. Download and extract this repository's ZIP. Open Terminal in the extracted folder.
+2. Download and extract [**PlayGTA5-Installer.zip**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip). Open Terminal in its `PlayGTA5` folder.
 3. Run `bash Download-Game.command`. All release archives are downloaded with resume support and verified with SHA-256. Only game assets are extracted on Mac; the Windows runtime and old release helpers are skipped.
 4. Run `bash Launch-Local.command`. Keep Terminal open while playing. Open **http://localhost:8000/__support/** in Chrome or Edge and start with the lower-memory option.
 5. Run `bash Verify-Game.command` to verify installed assets. Press **Ctrl+C** in the server terminal to stop playing.
@@ -36,7 +48,7 @@ For double-click launching, first run `chmod +x ./*.command` in that folder. If 
 
 ## Update an existing installation
 
-Download the latest repository ZIP and copy its helper files **and the `support` folder** into your existing installation, replacing old helpers. Keep `mirror`, `runtime`, and your browser saves. The installer preserves current helpers instead of extracting older copies from release archives. Do not extract the original release helpers over the update.
+Download the installer ZIP above (or the latest repository ZIP) and copy its helper files **and the `support` folder** into your existing installation, replacing old helpers. Keep `mirror`, `runtime`, and your browser saves. The installer preserves current helpers instead of extracting older copies from release archives. Do not extract the original release helpers over the update.
 
 ## Requirements
 
@@ -48,6 +60,24 @@ Download the latest repository ZIP and copy its helper files **and the `support`
 - First world loading and shader preparation can take several minutes. Do not close the tab just because progress appears slow.
 
 For lower-memory loading, try **http://localhost:8000/?low=1&fps=30&res=1280x720**. This reduces rendering load; it is a troubleshooting option, not a guaranteed fix for every GPU.
+
+## Performance / higher FPS
+
+Open **http://localhost:8000/__support/** for clickable presets. Start with **720p / 60**, compare the same location after shader preparation, and use **540p** if the GPU struggles. A 60 FPS cap allows a higher rate than the compatibility profile's 30 cap; it cannot make a slow device achieve 60.
+
+| Preset | Local launch link | Tradeoff |
+| --- | --- | --- |
+| Compatibility | [720p / 30](http://localhost:8000/?low=1&fps=30&res=1280x720&shadows=0) | Lower load and a conservative frame cap. |
+| Performance | [540p / 60](http://localhost:8000/?low=1&fps=60&res=960x540&shadows=0) | Fewer pixels, softer image. |
+| Balanced | [720p / 60](http://localhost:8000/?low=1&fps=60&res=1280x720&shadows=0) | Start here after compatibility checks pass. |
+| 1080p light | [1080p / 60](http://localhost:8000/?low=1&fps=60&res=1920x1080&shadows=0) | Sharper image; more GPU work. |
+| Benchmark | [540p / uncapped](http://localhost:8000/?low=1&fps=0&res=960x540&shadows=0) | Measures headroom; can increase heat and power use. |
+
+Every preset uses the existing `low=1` scene/texture settings with shadows off. Add `shadows=1` to compare low-quality shadows. The engine already enables its fast script interpreter and suppresses noisy script logs; these are existing optimizations, not new benchmark results. Lowering resolution from 1080p to 720p reduces rendered pixel count by about 56%, but FPS also depends on the CPU, GPU, shader compilation and asset streaming.
+
+For a useful comparison, record **GPU/driver, browser version, resolution, low/shadow settings, FPS cap, mode, save/location and observed FPS/stalls**. Keep the same scene and let first-load shader work settle. Check the active GPU in `chrome://gpu` / `edge://gpu`, close other GPU-heavy tabs, and keep graphics acceleration enabled. More reserved RAM is not automatically faster. An uncapped setting does not create a 200 FPS guarantee.
+
+Do not treat missing assets, a 66% audio-metadata stall, or a black world as an FPS problem. Use the troubleshooting steps below first.
 
 ## Manual download
 
@@ -103,6 +133,8 @@ No free host can promise permanent availability or a guaranteed month of service
 
 ## Troubleshooting
 
+For a useful issue report, include the **exact launch URL, last loading message, first console exception, failed Network request/status, verification result, GPU/driver, installed RAM, browser/OS and mode**. Review the compatibility report before posting. A percentage or red console-message count alone does not identify the cause.
+
 - **Missing mirror / blank page:** finish downloading and extracting every release part. Run `Verify-Game.cmd`.
 - **Address already in use:** another server is using port 8000. Use its existing tab, close that server, or run `runtime\python.exe serve_local.py --port 8001 --open`.
 - **WebGPU unavailable:** update Chrome/Edge and your graphics driver; enable browser hardware acceleration.
@@ -115,6 +147,9 @@ No free host can promise permanent availability or a guaranteed month of service
 - **Graphics device lost / `DXGI_ERROR_DEVICE_HUNG`:** this reports a GPU device failure. Close all game tabs, stop the game server with Ctrl+C, then restart once. Update the browser and GPU driver (macOS updates include its drivers), and check `chrome://gpu` or `edge://gpu` for hardware acceleration and Problems Detected. Try the lower-memory 720p link. Do not change Windows TDR registry settings or enable unsafe browser flags. If it persists, post your GPU model, OS/browser versions, when it happens, and the first console error to [issue #1](https://github.com/alihammoud21/playgta5/issues/1). The exact cause is still under investigation.
 - **Black world but audio/map/menu work:** verify the files, try the lower-memory link, and compare Story and Sandbox. Open developer tools (F12 on Windows, Option+Command+I on Mac), capture the first shader/WebGPU error and any failed asset request, and post them with the compatibility report to [issue #2](https://github.com/alihammoud21/playgta5/issues/2). HUD rendering alone does not prove that world rendering is working. Do not delete saves as a first troubleshooting step.
 - **Download failure:** rerun `Download-Game.cmd`. Completed, verified archives are remembered. Available disk space and network restrictions can affect downloading.
+- **No vehicle engine sound / broken minimap:** click the game to unlock browser audio and check tab mute. If other sounds work, identify an affected vehicle/location and any failed audio/texture request. Verify files and compare Story/Sandbox. Include a minimap screenshot and first error in [issue #13](https://github.com/alihammoud21/playgta5/issues/13); a confirmed fix is still pending.
+- **Story restarts at the prologue:** use the same browser profile and exact origin, remove `newgame=1`, and check whether a manual save appears in the game's Load Game menu before closing. Private browsing, cleared site storage, and another port/hostname can give a separate or temporary save store. The current compatibility report includes storage usage/quota; keep your browser data while investigating [issue #11](https://github.com/alihammoud21/playgta5/issues/11). No save-import compatibility is claimed.
+- **Saves after changing websites:** browser storage is separate for each origin. Moving from Vercel to Pages, or between a website and localhost, does not automatically transfer saves. Keep the old browser data; do not clear it as a first troubleshooting step.
 - **Windows security warning:** distinguish an unsigned/unrecognized-app (SmartScreen) warning from a named antivirus detection. Record the exact warning, threat name if shown, affected filename, and download URL. Do not run a file that has a malware detection, disable antivirus, add exclusions, or restore a quarantined file just to launch the game. Matching SHA-256 checksums confirm the published bytes; they do not prove that a file is harmless.
 
 The compatibility page checks WebAssembly Memory64, basic WebGPU device creation, shared-memory/isolation support, and a four-byte range read of the real WebAssembly file. It does **not** test every shader or certify gameplay. Diagnostics stay in your browser until you choose to copy and share them. See [Chrome's WebGPU troubleshooting guide](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips) for browser checks.

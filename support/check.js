@@ -11,6 +11,12 @@ const output = document.getElementById('report');
 async function check() {
   let device;
   try {
+    try {
+      report.storagePersisted = await navigator.storage?.persisted();
+      const estimate = await navigator.storage?.estimate();
+      report.storageUsageMB = estimate ? Math.round(estimate.usage / 1048576) : 'not reported';
+      report.storageQuotaMB = estimate ? Math.round(estimate.quota / 1048576) : 'not reported';
+    } catch { report.storageCheck = 'unavailable'; }
     if (!report.wasmMemory64) throw new Error('WebAssembly Memory64 is unavailable. Update to current Chrome or Edge.');
     const response = await fetch('/', { cache: 'no-store' });
     report.pageHTTP = response.status;
