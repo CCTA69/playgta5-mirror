@@ -2,7 +2,7 @@
 
 [**Download installer ZIP**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip) · [Installation](#download-and-play-on-windows) · [Mac](#download-and-play-on-mac) · [Higher-FPS setup](#performance--higher-fps) · [Report a problem](https://github.com/alihammoud21/playgta5/issues/new/choose)
 
-**Want controllers, cheats, and the experimental development map?** Use the separate [**PlayGTA5 Enhanced** repository](https://github.com/alihammoud21/playgta5-enhanced). It reuses this installation and adds a launcher, standard-gamepad input bridge, cheat-code entry panel, and access to the existing `env_test` level. These are experimental additions; they are not Michael's unreleased source or a promise of 200 FPS. This main repo remains the download, verification, compatibility, and hosting path.
+**Want controllers, cheats, and the experimental development map?** Use the separate [**PlayGTA5 Enhanced** repository](https://github.com/alihammoud21/playgta5-enhanced). It reuses this installation and adds a launcher, standard-gamepad input bridge, cheat-code entry panel, and access to the existing `env_test` level. These are experimental additions.
 
 Download the complete browser-game snapshot, including **all 12,482 files in the `mirror` folder**. This is a compiled client snapshot, not the original game-engine source code.
 
