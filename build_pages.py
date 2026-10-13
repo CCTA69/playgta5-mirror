@@ -16,13 +16,19 @@ FILE_LIMIT = 25 * 1024**2
 PREFLIGHT = """
 // Explain unavailable browser capabilities before downloading/starting the engine.
 let startupAdapter = null;
+let startupFailure = !isSecureContext ? 'secure-context'
+  : !crossOriginIsolated || typeof SharedArrayBuffer === 'undefined' ? 'shared-memory'
+  : typeof OffscreenCanvas === 'undefined' ? 'offscreen-canvas'
+  : typeof WebAssembly === 'undefined' || !WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,5,4,1,7,0,1])) ? 'memory64'
+  : !navigator.gpu ? 'webgpu' : '';
 if (isSecureContext && crossOriginIsolated && typeof SharedArrayBuffer !== 'undefined'
     && typeof OffscreenCanvas !== 'undefined' && typeof WebAssembly !== 'undefined'
     && WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,5,4,1,7,0,1])) && navigator.gpu) {
   try { startupAdapter = await navigator.gpu.requestAdapter({powerPreference:'high-performance'}); } catch {}
 }
-if (!startupAdapter) {
-  location.replace('/__support/');
+if (startupAdapter && !startupAdapter.features.has('texture-compression-bc')) startupFailure = 'texture-compression-bc';
+if (!startupAdapter || startupFailure) {
+  location.replace('/__support/?startup=' + (startupFailure || 'gpu-adapter'));
   throw new Error('Browser startup checks failed; see the compatibility page.');
 }
 startupAdapter = null;

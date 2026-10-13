@@ -17,6 +17,12 @@ def improve_game_page(code):
     """Improve support text at serving/build time, preserving verified release files."""
     if 'game-progress' not in code:
         return code
+    if 'name="viewport"' not in code:
+        code = code.replace('<head>', '<head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">', 1)
+    # Mobile taps must not call an absent pointer-lock API. Relative camera input
+    # comes from the touch pad instead; desktop pointer lock remains unchanged.
+    code = code.replace('if (!locked()) { canvas.requestPointerLock({ unadjustedMovement: true }).catch(() => canvas.requestPointerLock()); }',
+                        'if (!locked() && canvas.requestPointerLock && !matchMedia("(pointer:coarse)").matches) { Promise.resolve(canvas.requestPointerLock({ unadjustedMovement: true })).catch(() => Promise.resolve(canvas.requestPointerLock()).catch(() => {})); }')
     code = code.replace(': the device may be out of memory. Close other tabs, or reload.',
                         ': loading has paused. Use Help / browser checks and collect the first console error.')
     code = code.replace('If the tab shows "Aw, Snap!" or SIGILL it ran out of memory.',

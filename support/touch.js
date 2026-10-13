@@ -53,6 +53,18 @@
   group('touch-menu',[['Pause','Escape'],['Select','Enter'],['Menu ↑','ArrowUp'],['Menu ↓','ArrowDown'],['View','KeyV']]);
   const look=document.createElement('div');look.id='touch-look';look.textContent='Drag to look';bind(look,'look');root.append(look);
   document.body.append(root);
+  // Leave loading and mode selection unobstructed. The original loading screen
+  // removes itself when the world is ready; controls then become available.
+  const loading = document.getElementById('loading');
+  if (loading && !loading.classList.contains('done')) {
+    root.hidden = true;
+    const observer = new MutationObserver(() => {
+      if (!loading.isConnected || loading.classList.contains('done')) {
+        root.hidden = false; observer.disconnect();
+      }
+    });
+    observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  }
   addEventListener('blur',()=>state.release());
   document.addEventListener('visibilitychange',()=>{if(document.hidden)state.release();});
   addEventListener('game-tools-visibility',e=>{if(e.detail.hidden)state.release();});
