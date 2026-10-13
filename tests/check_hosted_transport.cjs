@@ -25,7 +25,7 @@ function networkFetch(input) {
   assert.equal(page.headers.get('Cross-Origin-Embedder-Policy'), 'require-corp');
   const html = await page.text();
   assert.ok(html.includes('/chunk-fetch.js') && html.includes('Browser startup checks failed'));
-  for (const path of ['/__support/', '/__support/check.js', '/help/']) {
+  for (const path of ['/__support/', '/__support/check.js', '/__support/controller.js', '/__support/touch.js', '/help/']) {
     const response = await networkFetch(origin + path);
     assert.equal(response.status, 200, path);
     await response.body.cancel();

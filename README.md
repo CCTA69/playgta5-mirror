@@ -1,6 +1,6 @@
 # PlayGTA5 — download, play, and troubleshoot
 
-[**Download installer ZIP**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip) · [Installation](#download-and-play-on-windows) · [Mac](#download-and-play-on-mac) · [Higher-FPS setup](#performance--higher-fps) · [Report a problem](https://github.com/alihammoud21/playgta5/issues/new/choose)
+[**Play in browser / device check**](https://gta5-87g.pages.dev/__support/) · [**Download installer ZIP**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer-v2.zip) · [Installation](#download-and-play-on-windows) · [Mac](#download-and-play-on-mac) · [Higher-FPS setup](#performance--higher-fps) · [Report a problem](https://github.com/alihammoud21/playgta5/issues/new/choose)
 
 **Want controllers, cheats, and the experimental development map?** Use the separate [**PlayGTA5 Enhanced** repository](https://github.com/alihammoud21/playgta5-enhanced). It reuses this installation and adds a launcher, standard-gamepad input bridge, cheat-code entry panel, and access to the existing `env_test` level. These are experimental additions.
 
@@ -14,9 +14,19 @@ The game data is approximately **21.2 GB (19.7 GiB)**. It is included in the rep
 | --- | --- |
 | Full download | Fresh installation: 12,527 game/runtime files passed SHA-256 verification. |
 | Windows / Mac launch tools | Automated installation/server checks passed; Mac gameplay still needs hardware testing. |
-| Public game hosting | Vercel deployments are disabled. The replacement full-site upload failed and is being retried; no new link is gameplay-verified yet. |
+| Public game hosting | [Cloudflare Pages is deployed](https://gta5-87g.pages.dev/__support/). Engine checksum, streaming compilation, isolation headers and real asset-range reads passed; this does not certify every mission/device. |
 | Black world / GPU device loss | Reports remain under investigation; basic WebGPU checks do not prove world rendering. |
 | FPS | Presets below reduce rendering load. No universal 90–200 FPS result has been measured for this release. |
+
+## Graphics, controllers and unobstructed play
+
+The [browser hub](https://gta5-87g.pages.dev/__support/) offers Efficiency (720p/30, light), Balanced (720p/60, light), and Quality (1080p/60, full graphics) profiles. Save before switching; the game reloads. These are frame caps, not measured FPS guarantees.
+
+Connect a standard controller by USB or Bluetooth, open the game in Chrome/Edge, and press a controller button. Click the game to capture the mouse. Left stick moves, right stick looks; View + Menu switches on-foot/driving mappings. The controller status button also switches modes. This is keyboard/mouse mapping, not native analog handling. Controller hardware still needs broader testing.
+
+Press **F8** or **Hide** to hide the custom help and controller/cheat overlays together. A small **Tools** button restores them. This does not hide the game's native HUD.
+
+The hub adapts to phone screens; **touch controls are experimental and have not been tested on phone hardware**, and mobile browsers must meet all engine requirements. Multiplayer/GTA Online is also not implemented: see [engine limitations and the work needed](ENGINE-LIMITATIONS.md). Minimap roads, vehicle audio/entry animations and the reported minimap initialization crash remain unresolved.
 
 ## Stuck at 66%? Check this first
 
@@ -26,7 +36,7 @@ Chrome disables WebGPU when graphics acceleration is switched off ([Chrome troub
 
 ## Download and play on Windows
 
-1. Download [**PlayGTA5-Installer.zip**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip), extract it completely, and open its `PlayGTA5` folder. This small ZIP contains the current installers and help tools; the next step downloads the game. Cloning this repository or using **Code → Download ZIP** also works.
+1. Download [**PlayGTA5-Installer-v2.zip**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer-v2.zip), extract it completely, and open its `PlayGTA5` folder. This small ZIP contains the current installers and help tools; the next step downloads the game. Cloning this repository or using **Code → Download ZIP** also works.
 2. Double-click **`Download-Game.cmd`** in the extracted folder. It downloads every game archive from [the full-game release](https://github.com/alihammoud21/playgta5/releases/tag/full-game-v1), checks SHA-256 checksums, and extracts the complete mirror and bundled Python runtime. Keep the window open until it says **Download complete**. If interrupted, run it again to resume.
 3. Double-click **`Launch-Local.cmd`**. Keep its server window open while playing.
 4. Your browser opens **http://localhost:8000/__support/**. Review the compatibility checks, then choose the **lower-memory 720p / 30 FPS** launch option. Choose **Story Mode** or **Sandbox Mode** in the game. If your default browser is not Chrome or Edge, paste the local address into one of them.
@@ -37,7 +47,7 @@ No Python installation, Netlify account, subscription, or API key is needed on W
 ## Download and play on Mac
 
 1. Install **Python 3.11 or newer** from [python.org](https://www.python.org/downloads/macos/) and a current Chrome or Edge browser.
-2. Download and extract [**PlayGTA5-Installer.zip**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer.zip). Open Terminal in its `PlayGTA5` folder.
+2. Download and extract [**PlayGTA5-Installer-v2.zip**](https://github.com/alihammoud21/playgta5/releases/download/full-game-v1/PlayGTA5-Installer-v2.zip). Open Terminal in its `PlayGTA5` folder.
 3. Run `bash Download-Game.command`. All release archives are downloaded with resume support and verified with SHA-256. Only game assets are extracted on Mac; the Windows runtime and old release helpers are skipped.
 4. Run `bash Launch-Local.command`. Keep Terminal open while playing. Open **http://localhost:8000/__support/** in Chrome or Edge and start with the lower-memory option.
 5. Run `bash Verify-Game.command` to verify installed assets. Press **Ctrl+C** in the server terminal to stop playing.
@@ -118,7 +128,7 @@ On Linux, use Python 3.11+ with `python3 download_game.py`, then `python3 serve_
 
 The repository's Vercel configuration now publishes only the small help site in `public/`; it no longer rebuilds the 21 GB game on every push. This change alone does not remove existing deployment storage or reactivate a disabled account. Old large deployments must be reviewed in the Vercel dashboard before that URL can be restored.
 
-A **Cloudflare Pages static deployment is being validated**. Its current free limits allow 20,000 files with a maximum of 25 MiB each, and static requests are free and unlimited ([limits](https://developers.cloudflare.com/pages/platform/limits/), [pricing](https://developers.cloudflare.com/pages/functions/pricing/)). `build_pages.py` verifies the downloaded mirror and splits large assets into 4 MiB pieces. The browser loader reconstructs byte ranges using cached pieces; it does not depend on a server implementing HTTP Range, paid R2 storage, or Pages Functions. Generated output stays out of Git.
+The replacement **[Cloudflare Pages site is live](https://gta5-87g.pages.dev/__support/)**. Transport and engine compilation checks passed on October 13, 2026. Free hosting has no promise of permanent availability. Its current free limits allow 20,000 files with a maximum of 25 MiB each, and static requests are free and unlimited ([limits](https://developers.cloudflare.com/pages/platform/limits/), [pricing](https://developers.cloudflare.com/pages/functions/pricing/)). `build_pages.py` verifies the downloaded mirror and splits large assets into 4 MiB pieces. The browser loader reconstructs byte ranges using cached pieces; it does not depend on a server implementing HTTP Range, paid R2 storage, or Pages Functions. Generated output stays out of Git.
 
 To build after downloading the game:
 

@@ -21,7 +21,25 @@ def improve_game_page(code):
                         ': loading has paused. Use Help / browser checks and collect the first console error.')
     code = code.replace('If the tab shows "Aw, Snap!" or SIGILL it ran out of memory.',
                         'A tab crash needs its error details; it does not by itself prove insufficient RAM.')
-    link = '<a href="/__support/" target="_blank" rel="noopener" style="position:fixed;top:12px;right:12px;z-index:10000;background:#182621;color:#fff;padding:10px 14px;border-radius:5px;font:14px system-ui;text-decoration:none">Help / browser checks</a>'
+    link = (SUPPORT / 'overlay.html').read_text(encoding='utf-8')
+    marker = 'Atomics.store(w, MY, H >> 1);'
+    if code.count(marker) == 1:
+        code = code.replace('<head>', '<head><script src="/__support/controller.js"></script><script defer src="/__support/touch.js"></script>', 1)
+        code = code.replace(marker, marker + '''
+if (!window.PlayGTA5Enhanced) {
+    const mode = document.createElement('button');
+    mode.setAttribute('data-game-overlay', '');
+    mode.title = 'Click to switch on-foot/driving controls; View + Menu also switches';
+    mode.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:10003;max-width:48vw;min-height:44px;padding:10px 14px;background:#182621e8;color:white;border:1px solid #789184;border-radius:24px;font:14px system-ui;cursor:pointer';
+    mode.hidden = true;
+    document.body.append(mode);
+    const controller = PlayGTA5Controller.attach({keys,w,VK,canvas,status:text => {
+        mode.hidden = text === 'Press a controller button to connect';
+        if (mode.textContent !== text) mode.textContent = text;
+    }});
+    mode.onclick = () => controller.toggleMode();
+}
+''', 1)
     return code.replace('<body>', '<body>\n' + link, 1)
 
 class Handler(SimpleHTTPRequestHandler):
@@ -50,7 +68,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
             return io.BytesIO(body)
-        support_files = {'/__support/': 'index.html', '/__support/check.js': 'check.js'}
+        support_files = {'/__support/': 'index.html', '/__support/check.js': 'check.js', '/__support/controller.js': 'controller.js', '/__support/touch.js': 'touch.js'}
         support_name = support_files.get(urlsplit(self.path).path)
         if support_name:
             path = SUPPORT / support_name

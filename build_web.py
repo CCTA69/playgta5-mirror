@@ -41,6 +41,7 @@ def finish(output):
     help_dir = output / 'help'
     help_dir.mkdir()
     shutil.copyfile(HERE / 'public/index.html', help_dir / 'index.html')
+    shutil.copytree(HERE / 'support', output / '__support')
     print('Ready: playable game at /; download/help page at /help/', flush=True)
 
 

@@ -11,7 +11,7 @@ FILES = (
     'Verify-Game.cmd', 'Verify-Game.command', 'mac-launcher.sh',
     'download_game.py', 'serve_local.py', 'verify_game.py',
     'download-manifest.json', 'file-inventory.json', 'SHA256SUMS.txt',
-    'README.md', 'support/index.html', 'support/check.js',
+    'README.md', 'ENGINE-LIMITATIONS.md', 'support/index.html', 'support/check.js', 'support/overlay.html', 'support/controller.js', 'support/touch.js',
 )
 
 

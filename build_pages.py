@@ -100,7 +100,7 @@ def build(source, output):
             raise ValueError(f'Expected exactly one {name}')
         worker = workers[0]
         worker.write_text("importScripts('/chunk-index.js', '/chunk-fetch.js');\n" + worker.read_text(encoding='utf-8'), encoding='utf-8')
-    shutil.copytree(HERE / 'support', output / '__support')
+    shutil.copytree(HERE / 'support', output / '__support', dirs_exist_ok=True)
     support = output / '__support/index.html'
     support.write_text(support.read_text(encoding='utf-8').replace('<script src="/__support/check.js">', '<script src="/chunk-index.js"></script><script src="/chunk-fetch.js"></script><script src="/__support/check.js">'), encoding='utf-8')
     (output / '_headers').write_text('/*\n  Cross-Origin-Opener-Policy: same-origin\n  Cross-Origin-Embedder-Policy: require-corp\n  Cross-Origin-Resource-Policy: same-origin\n/__chunks/*\n  Cache-Control: public, max-age=31536000, immutable\n', encoding='utf-8')
