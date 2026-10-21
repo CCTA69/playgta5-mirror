@@ -7,7 +7,44 @@
   const originalFetch = globalThis.fetch.bind(globalThis);
   const manifest = globalThis.GAME_CHUNKS;
   const cache = new Map(), pending = new Map(), budget = 32 * 1024 * 1024;
+  const idleTimeout = 30000, attempts = 3;
   let cacheBytes = 0;
+  async function downloadPiece(url, size, options) {
+    let lastError;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const controller = new AbortController();
+      let timer, reader;
+      const progress = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => controller.abort(new Error('No chunk data received for 30 seconds')), idleTimeout);
+      };
+      try {
+        progress();
+        // A retry must not keep returning a truncated response from the HTTP cache.
+        const res = await originalFetch(url, {cache: attempt ? 'reload' : 'force-cache', priority: options.priority, signal: controller.signal});
+        if (!res.ok) { await res.body?.cancel(); return {failure: {status: res.status, statusText: res.statusText}}; }
+        if (res.status !== 200) { await res.body?.cancel(); throw new Error(`Unexpected chunk status ${res.status}`); }
+        const bytes = new Uint8Array(size);
+        let received = 0;
+        reader = res.body.getReader();
+        for (;;) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          if (!value.byteLength) continue;
+          progress();
+          if (received + value.byteLength > size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received more bytes`);
+          bytes.set(value, received); received += value.byteLength;
+        }
+        if (received !== size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received ${received}`);
+        return {bytes};
+      } catch (error) {
+        lastError = error;
+        controller.abort(error);
+        reader?.cancel().catch(() => {});
+      } finally { clearTimeout(timer); }
+    }
+    throw new Error(`Game chunk ${url.pathname} failed after ${attempts} attempts: ${lastError?.message || lastError}`);
+  }
   async function piece(url, size, options) {
     const key = url.href;
     if (cache.has(key)) {
@@ -17,11 +54,9 @@
     if (pending.has(key)) return pending.get(key);
     const job = (async () => {
       // At most 4 MiB per transfer. A reader must not abort another reader's shared transfer.
-      const res = await originalFetch(url, {cache: 'force-cache', priority: options.priority});
-      if (!res.ok) { await res.body?.cancel(); return {failure: {status: res.status, statusText: res.statusText}}; }
-      if (res.status !== 200) { await res.body?.cancel(); throw new Error(`Unexpected chunk status ${res.status}`); }
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      if (bytes.length !== size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received ${bytes.length}`);
+      const result = await downloadPiece(url, size, options);
+      if (result.failure) return result;
+      const {bytes} = result;
       while (cacheBytes + bytes.length > budget && cache.size) {
         const oldest = cache.keys().next().value;
         cacheBytes -= cache.get(oldest).byteLength; cache.delete(oldest);
