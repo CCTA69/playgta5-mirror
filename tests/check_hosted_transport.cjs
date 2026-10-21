@@ -8,11 +8,11 @@ const {Readable} = require('node:stream');
 const {createHash} = require('node:crypto');
 const origin = new URL(process.argv[2]).origin;
 const ip = process.argv[3];
-function networkFetch(input) {
+function networkFetch(input, init = {}) {
   const url = new URL(input);
   assert.equal(url.origin, origin);
   return new Promise((resolve, reject) => {
-    const options = ip ? {lookup: (_name, opts, cb) => opts.all ? cb(null, [{address: ip, family: 4}]) : cb(null, ip, 4)} : {};
+    const options = {signal: init.signal, ...(ip ? {lookup: (_name, opts, cb) => opts.all ? cb(null, [{address: ip, family: 4}]) : cb(null, ip, 4)} : {})};
     const req = https.get(url, options, res => resolve(new Response(Readable.toWeb(res), {status: res.statusCode, headers: res.headers})));
     req.setTimeout(60000, () => req.destroy(new Error('HTTPS request timed out')));
     req.on('error', reject);
@@ -36,7 +36,7 @@ function networkFetch(input) {
   const codeResponse = await networkFetch(origin + '/chunk-fetch.js');
   const code = await codeResponse.text();
   assert.equal(code.replace(/\r\n/g, '\n'), fs.readFileSync('hosting/chunk-fetch.js', 'utf8').replace(/\r\n/g, '\n'));
-  const context = vm.createContext({fetch: networkFetch, Request, Response, Headers, URL, ReadableStream, AbortController,
+  const context = vm.createContext({fetch: networkFetch, Request, Response, Headers, URL, ReadableStream, AbortController, setTimeout, clearTimeout,
     location: {href: origin + '/', origin}, GAME_CHUNKS: manifest});
   vm.runInContext(code, context);
   const wasmPath = Object.keys(manifest.files).find(path => path.endsWith('/game.wasm'));

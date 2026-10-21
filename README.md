@@ -146,6 +146,16 @@ No free host can promise permanent availability or a guaranteed month of service
 
 ## Troubleshooting
 
+The Pages adapter decodes encoded archive filenames before looking them up in the chunk manifest. This fixes requests such as `clip_weapons%40.rpf`: the manifest stores `clip_weapons@.rpf`, and bypassing it requests an unsplit file that does not exist on the host. Reserved characters, Unicode filenames, and malformed URL escapes have regression coverage.
+
+The Pages chunk adapter retries a transfer that receives no bytes for 30 seconds, including stalls before response headers or during the body. It allows three attempts and bypasses the HTTP cache on retries, so a truncated cached piece can be replaced. Slow downloads that continue delivering bytes are allowed to finish. Concurrent readers share the retry; cancelling one reader does not cancel the others. Exhausted retries identify the failing chunk path. An HTTP error gets one cache-bypassing attempt before returning to the caller's existing retry handling: otherwise `force-cache` can reuse a cached temporary failure forever, even after the server recovers.
+
+Archive mounting and streaming often request only a small portion of an RPF file. The adapter reads through the requested end, rounded up to a 64 KiB boundary within each piece, and cancels the unused response body even when the host ignores Range. For example, a 3,720-byte character-data read ending 281,736 bytes into a 4 MiB piece needs a 320 KiB prefix. Separate prefix caching supports growth and never treats a prefix as a complete file; complete-file reads still validate the full length. Small requests can finish independently of a bulk transfer. Actual bandwidth depends on browser buffering and previously cached data. Successively larger requests can download overlapping prefixes again, so this is not a guarantee of lower bandwidth for every access pattern.
+
+Pages builds now skip replaying the entire recorded boot set at startup. Demand reads and the engine's native read-ahead remain enabled, without diagnostic recording. This avoids competing bulk transfers on a static host that ignores Range. First startup still needs substantial game data; later starts can reuse the browser cache.
+
+These changes address reproduced transport failures; they do not establish that every 76% pause has the same cause or certify every mission/device. In this runtime, the graphics worker labels its first presented frame as 76%, while engine loading may continue. Record the last engine message and data activity alongside the percentage.
+
 For a useful issue report, include the **exact launch URL, last loading message, first console exception, failed Network request/status, verification result, GPU/driver, installed RAM, browser/OS and mode**. Review the compatibility report before posting. A percentage or red console-message count alone does not identify the cause.
 
 - **Missing mirror / blank page:** finish downloading and extracting every release part. Run `Verify-Game.cmd`.
@@ -168,5 +178,7 @@ For a useful issue report, include the **exact launch URL, last loading message,
 The compatibility page checks WebAssembly Memory64, basic WebGPU device creation, shared-memory/isolation support, and a four-byte range read of the real WebAssembly file. It does **not** test every shader or certify gameplay. Diagnostics stay in your browser until you choose to copy and share them. See [Chrome's WebGPU troubleshooting guide](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips) for browser checks.
 
 ## Development checks
+
+`node tests/browser_cache_fixture.cjs` serves a small Chromium cache regression at `http://127.0.0.1:4186/test`. It primes a cached HTTP 502, then verifies that the adapter makes a fresh request and reconstructs the correct bytes. It downloads no game assets and does not clear unrelated browser data.
 
 Run `python3 -m unittest discover -s tests -v`, `node --check support/check.js`, and `bash -n mac-launcher.sh`. Tests cover the installer bundle, preservation/resume, checksums, unsafe paths, isolation headers, range reads, both batch formats, malformed requests, hosted startup checks, and cached piece reconstruction. With Node 24+, `node tests/check_hosted_transport.cjs https://YOUR_PROJECT.pages.dev` checks deployed headers, cross-piece ranges, the complete engine checksum, streaming compilation, and real 404 responses against the local mirror. This is a network/engine test, not a gameplay test. An existing mirror can be tested without copying it: `python3 serve_local.py --root /path/to/playgta5.com --port 8001 --open`.

@@ -27,10 +27,12 @@ const {once} = require('node:events');
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   const origin = `http://127.0.0.1:${server.address().port}`;
   function makeFetch() {
-    const context = vm.createContext({fetch, Request, Response, Headers, URL, ReadableStream, AbortController,
+    const context = vm.createContext({fetch, Request, Response, Headers, URL, ReadableStream, AbortController, setTimeout, clearTimeout,
     location: {href: origin + '/b/test/loader.js', origin},
     GAME_CHUNKS: {chunkSize: 8, files: {
       '/data/game.rpf': {size: data.length, prefix: '/pieces', type: 'application/octet-stream'},
+      '/data/clip_weapons@.rpf': {size: data.length, prefix: '/pieces', type: 'application/octet-stream'},
+      '/data/reserved #?%+ café.rpf': {size: data.length, prefix: '/pieces', type: 'application/octet-stream'},
       '/b/test/game.wasm': {size: wasm.length, prefix: '/wasm', type: 'application/wasm'}
     }}});
     vm.runInContext(fs.readFileSync('hosting/chunk-fetch.js', 'utf8'), context);
@@ -48,6 +50,13 @@ const {once} = require('node:events');
       }
     }
     ignoreRange = false;
+    for (const name of ['clip_weapons@.rpf', 'reserved #?%+ café.rpf']) {
+      const encoded = origin + '/data/' + encodeURIComponent(name) + '?version=1';
+      const res = await fetchGame(encoded, {headers: {Range: 'bytes=6-18'}});
+      assert.equal(res.status, 206, `Encoded filename must resolve through the chunk manifest: ${name}`);
+      assert.deepEqual(Buffer.from(await res.arrayBuffer()), data.subarray(6, 19));
+    }
+    assert.equal(await (await fetchGame(origin + '/invalid%escape')).text(), 'ordinary asset');
     const request = new Request(origin + '/data/game.rpf', {headers: {Range: 'bytes=8-9'}});
     assert.deepEqual(Buffer.from(await (await fetchGame(request)).arrayBuffer()), data.subarray(8, 10));
     for (const range of ['bytes=29-', 'bytes=-0', 'bytes=5-2', 'bytes=1-2,4-5', 'broken']) {

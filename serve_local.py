@@ -25,6 +25,10 @@ def improve_game_page(code):
                         'if (!locked() && canvas.requestPointerLock && !matchMedia("(pointer:coarse)").matches) { Promise.resolve(canvas.requestPointerLock({ unadjustedMovement: true })).catch(() => Promise.resolve(canvas.requestPointerLock()).catch(() => {})); }')
     code = code.replace(': the device may be out of memory. Close other tabs, or reload.',
                         ': loading has paused. Use Help / browser checks and collect the first console error.')
+    # Resumed network/log activity must remove the obsolete pause message.
+    # A newer engine error owns the label and its colour; leave those intact.
+    code = code.replace("else if (stallLogged) { stallLogged = 0; label.style.color = ''; }",
+                        "else if (stallLogged) { stallLogged = 0; if (['#e96', 'rgb(238, 153, 102)'].includes(label.style.color)) label.style.color = ''; if (label.textContent.startsWith('No progress for ')) label.textContent = lastLabel || 'Loading...'; }")
     code = code.replace('If the tab shows "Aw, Snap!" or SIGILL it ran out of memory.',
                         'A tab crash needs its error details; it does not by itself prove insufficient RAM.')
     link = (SUPPORT / 'overlay.html').read_text(encoding='utf-8')
