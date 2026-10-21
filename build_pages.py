@@ -43,6 +43,16 @@ def patch_startup(code):
     return code.replace(marker, marker + '\n' + PREFLIGHT, 1)
 
 
+def patch_pages_loader(code):
+    # Pages ignores Range: replaying the full boot set expands small reads into
+    # many large transfers that compete with initialization. Keep demand reads
+    # and native read-ahead hints, without enabling diagnostic recording.
+    marker = "bootset: m.lowMemory ? 'bootset_low.json' : 'bootset.json'"
+    if code.count(marker) != 1:
+        raise ValueError('Unrecognized Pages loader: expected one bootset setting')
+    return code.replace(marker, "bootset: ''", 1)
+
+
 def package_file(original, destination, record, chunks, chunk_size=CHUNK_SIZE, file_limit=CHUNK_SIZE):
     if original.stat().st_size != record['bytes'] or digest(original) != record['sha256']:
         raise ValueError(f'Source verification failed: {record["path"]}')
@@ -105,7 +115,10 @@ def build(source, output):
         if len(workers) != 1:
             raise ValueError(f'Expected exactly one {name}')
         worker = workers[0]
-        worker.write_text("importScripts('/chunk-index.js', '/chunk-fetch.js');\n" + worker.read_text(encoding='utf-8'), encoding='utf-8')
+        code = worker.read_text(encoding='utf-8')
+        if name == 'loader.js':
+            code = patch_pages_loader(code)
+        worker.write_text("importScripts('/chunk-index.js', '/chunk-fetch.js');\n" + code, encoding='utf-8')
     shutil.copytree(HERE / 'support', output / '__support', dirs_exist_ok=True)
     support = output / '__support/index.html'
     support.write_text(support.read_text(encoding='utf-8').replace('<script src="/__support/check.js">', '<script src="/chunk-index.js"></script><script src="/chunk-fetch.js"></script><script src="/__support/check.js">'), encoding='utf-8')
