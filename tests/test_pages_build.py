@@ -31,6 +31,9 @@ class PagesBuildTests(unittest.TestCase):
     def test_javascript_range_transport_over_http(self):
         subprocess.run(['node', 'tests/test_chunk_fetch.cjs'], check=True, timeout=30)
 
+    def test_javascript_chunk_recovery_over_http(self):
+        subprocess.run(['node', '--test', 'tests/test_chunk_recovery.cjs'], check=True, timeout=30)
+
     def test_hosted_startup_routes_missing_features_to_help(self):
         for feature in ['ok', 'gpu', 'memory64', 'isolation', 'context', 'bc']:
             setup = f"""
