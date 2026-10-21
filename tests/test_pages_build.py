@@ -4,11 +4,20 @@ import subprocess
 import tempfile
 import unittest
 
-from build_pages import package_file, patch_startup, PREFLIGHT
+from build_pages import package_file, patch_startup, patch_pages_loader, PREFLIGHT
 from build_web import PREFIX
 
 
 class PagesBuildTests(unittest.TestCase):
+    def test_pages_loads_on_demand_without_recording_or_disabling_hints(self):
+        source = "io.postMessage({init:true, record:!!m.record, noHints:!!m.noHints, bootset: m.lowMemory ? 'bootset_low.json' : 'bootset.json'});"
+        patched = patch_pages_loader(source)
+        script = "const assert=require('node:assert/strict'); for(const lowMemory of [true,false]) { const m={lowMemory}, io={postMessage(v){assert.deepEqual(v,{init:true,record:false,noHints:false,bootset:''});}};" + patched + "}"
+        subprocess.run(['node', '-e', script], check=True, timeout=10)
+        for invalid in ['changed snapshot', source + source, patched]:
+            with self.assertRaises(ValueError):
+                patch_pages_loader(invalid)
+
     def test_split_assets_reconstruct_and_source_stays_unchanged(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
