@@ -80,3 +80,17 @@ test('a socket reset during a body is retried without returning partial bytes', 
   assert.deepEqual(Buffer.from(await (await read('/data/test.rpf')).arrayBuffer()),expected);
   assert.equal(calls,2);
 });
+
+test('an HTTP error gets one cache-bypassing attempt before caller retry handling', {timeout:3000}, async t=>{
+  let calls=0; const controls=[];
+  const read=await fixture(t,(req,res)=>{
+    controls.push(req.headers['cache-control']); calls++;
+    if(calls===1){res.writeHead(502,{'Cache-Control':'public, max-age=600'});res.end('temporary failure');}
+    else res.end(expected);
+  });
+  const response=await read('/data/test.rpf');
+  assert.equal(response.status,200);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()),expected);
+  assert.equal(calls,2);
+  assert.match(controls[1],/no-cache/);
+});
