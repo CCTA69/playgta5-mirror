@@ -78,7 +78,13 @@
   globalThis.fetch = async (input, options = {}) => {
     const request = new Request(input instanceof Request ? input : new URL(input, location.href), options);
     const url = new URL(request.url);
-    const file = url.origin === location.origin && manifest.files[decodeURI(url.pathname)];
+    if (url.origin !== location.origin) return originalFetch(input, options);
+    let path;
+    // Engine paths encode each filename, including @. decodeURI leaves %40
+    // encoded and misses archives that exist only as pieces in the manifest.
+    try { path = decodeURIComponent(url.pathname); }
+    catch { return originalFetch(input, options); }
+    const file = manifest.files[path];
     if (!file || !['GET', 'HEAD'].includes(request.method)) return originalFetch(input, options);
     request.signal.throwIfAborted();
     const size = file.size, step = file.url ? size : manifest.chunkSize;
