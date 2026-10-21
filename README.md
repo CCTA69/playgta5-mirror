@@ -146,6 +146,10 @@ No free host can promise permanent availability or a guaranteed month of service
 
 ## Troubleshooting
 
+The Pages chunk adapter now retries a transfer that receives no bytes for 30 seconds, including stalls before response headers or during the body. It allows three attempts and bypasses the HTTP cache on retries, so a truncated cached piece can be replaced. Slow downloads that continue delivering bytes are allowed to finish. Concurrent readers share the retry; cancelling one reader does not cancel the others. Exhausted retries identify the failing chunk path. HTTP error responses retain the existing caller's retry handling.
+
+This addresses a reproduced transport hang; it does not establish that every 76% pause is caused by transport or certify playable gameplay. In this runtime, the graphics worker labels its first presented frame as 76%, while engine loading may continue. Record the last engine message and data activity alongside the percentage.
+
 For a useful issue report, include the **exact launch URL, last loading message, first console exception, failed Network request/status, verification result, GPU/driver, installed RAM, browser/OS and mode**. Review the compatibility report before posting. A percentage or red console-message count alone does not identify the cause.
 
 - **Missing mirror / blank page:** finish downloading and extracting every release part. Run `Verify-Game.cmd`.
