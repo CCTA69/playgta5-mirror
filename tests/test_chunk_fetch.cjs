@@ -27,7 +27,7 @@ const {once} = require('node:events');
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   const origin = `http://127.0.0.1:${server.address().port}`;
   function makeFetch() {
-    const context = vm.createContext({fetch, Request, Response, Headers, URL, ReadableStream, AbortController,
+    const context = vm.createContext({fetch, Request, Response, Headers, URL, ReadableStream, AbortController, setTimeout, clearTimeout,
     location: {href: origin + '/b/test/loader.js', origin},
     GAME_CHUNKS: {chunkSize: 8, files: {
       '/data/game.rpf': {size: data.length, prefix: '/pieces', type: 'application/octet-stream'},
