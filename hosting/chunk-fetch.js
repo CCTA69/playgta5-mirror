@@ -1,7 +1,7 @@
 /* Serve byte ranges from small immutable static files. Pages may ignore Range.
  * Whole pieces use the browser HTTP cache; bounded RAM and shared pending
  * requests avoid downloading the same piece for concurrent engine reads.
- * Small archive-header reads retain a separate prefix and cancel the tail.
+ * Range reads retain a sufficient prefix and cancel the unused tail.
  */
 (() => {
   'use strict';
@@ -10,8 +10,8 @@
   const cache = new Map(), pending = new Map(), budget = 32 * 1024 * 1024;
   const idleTimeout = 30000, attempts = 3, prefixSize = 64 * 1024;
   let cacheBytes = 0;
-  async function downloadPiece(url, size, options, prefixOnly) {
-    const wanted = prefixOnly ? prefixSize : size;
+  async function downloadPiece(url, size, options, prefixBytes) {
+    const wanted = prefixBytes || size;
     let lastError;
     for (let attempt = 0; attempt < attempts; attempt++) {
       const controller = new AbortController();
@@ -40,12 +40,12 @@
           if (done) break;
           if (!value.byteLength) continue;
           progress();
-          if (!prefixOnly && received + value.byteLength > size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received more bytes`);
+          if (!prefixBytes && received + value.byteLength > size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received more bytes`);
           const take = Math.min(value.byteLength, wanted - received);
           bytes.set(value.subarray(0, take), received); received += take;
-          if (prefixOnly && received === wanted) {
-            // Archive mounting reads tiny headers. Stop the unused body even
-            // when the static host ignores Range; cache this prefix separately.
+          if (prefixBytes && received === wanted) {
+            // Stop after the requested window, rounded to 64 KiB, even when
+            // the static host ignores Range. Never cache it as a full piece.
             reader.cancel().catch(() => {});
             controller.abort();
             return {bytes};
@@ -61,23 +61,29 @@
     }
     throw new Error(`Game chunk ${url.pathname} failed after ${attempts} attempts: ${lastError?.message || lastError}`);
   }
-  async function piece(url, size, options, prefixOnly) {
+  async function piece(url, size, options, prefixBytes) {
     const fullKey = url.href, prefixKey = fullKey + '#prefix';
     // A complete piece can satisfy either kind of read, never the reverse.
-    const key = cache.has(fullKey) || !prefixOnly ? fullKey : prefixKey;
-    if (cache.has(key)) {
-      const bytes = cache.get(key); cache.delete(key); cache.set(key, bytes);
+    const cachedKey = cache.has(fullKey) ? fullKey : prefixKey;
+    const cached = cache.get(cachedKey);
+    if (cached && (cachedKey === fullKey || (prefixBytes && cached.length >= prefixBytes))) {
+      const bytes = cached; cache.delete(cachedKey); cache.set(cachedKey, bytes);
       return {bytes};
     }
-    if (pending.has(key)) return pending.get(key);
+    const key = prefixBytes ? prefixKey : fullKey;
+    const jobKey = prefixBytes ? `${prefixKey}:${prefixBytes}` : fullKey;
+    if (pending.has(jobKey)) return pending.get(jobKey);
     const job = (async () => {
       // At most 4 MiB per transfer. A reader must not abort another reader's shared transfer.
-      const result = await downloadPiece(url, size, options, prefixOnly);
+      const result = await downloadPiece(url, size, options, prefixBytes);
       if (result.failure) return result;
       const {bytes} = result;
-      if (!prefixOnly && cache.has(prefixKey)) {
+      // A late smaller request must not replace a newer, more complete cache.
+      if (prefixBytes && (cache.has(fullKey) || (cache.get(prefixKey)?.length || 0) >= bytes.length)) return result;
+      if (!prefixBytes && cache.has(prefixKey)) {
         cacheBytes -= cache.get(prefixKey).byteLength; cache.delete(prefixKey);
       }
+      if (cache.has(key)) { cacheBytes -= cache.get(key).byteLength; cache.delete(key); }
       while (cacheBytes + bytes.length > budget && cache.size) {
         const oldest = cache.keys().next().value;
         cacheBytes -= cache.get(oldest).byteLength; cache.delete(oldest);
@@ -85,8 +91,8 @@
       if (bytes.length <= budget) { cache.set(key, bytes); cacheBytes += bytes.length; }
       return {bytes};
     })();
-    pending.set(key, job);
-    try { return await job; } finally { pending.delete(key); }
+    pending.set(jobKey, job);
+    try { return await job; } finally { pending.delete(jobKey); }
   }
   function waitForPiece(job, signal) {
     signal.throwIfAborted();
@@ -134,8 +140,10 @@
       const index = Math.floor(position / step);
       const pieceURL = new URL(file.url ? file.url + url.search : `${file.prefix}/${String(index).padStart(4, '0')}.bin`, location.origin);
       const partSize = Math.min(step, size - index * step);
-      const prefixOnly = !!range && partSize > prefixSize && end - index * step < prefixSize;
-      return waitForPiece(piece(pieceURL, partSize, options, prefixOnly), controller.signal);
+      const needed = Math.min(partSize, end - index * step + 1);
+      const rounded = Math.min(partSize, Math.ceil(needed / prefixSize) * prefixSize);
+      const prefixBytes = range && rounded < partSize ? rounded : 0;
+      return waitForPiece(piece(pieceURL, partSize, options, prefixBytes), controller.signal);
     }
     let ready;
     try { ready = await next(); if (ready.failure) { cleanup(); return new Response(null, ready.failure); } }
