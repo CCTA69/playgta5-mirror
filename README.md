@@ -146,6 +146,8 @@ No free host can promise permanent availability or a guaranteed month of service
 
 ## Troubleshooting
 
+The Pages adapter decodes encoded archive filenames before looking them up in the chunk manifest. This fixes requests such as `clip_weapons%40.rpf`: the manifest stores `clip_weapons@.rpf`, and bypassing it requests an unsplit file that does not exist on the host. Reserved characters, Unicode filenames, and malformed URL escapes have regression coverage.
+
 The Pages chunk adapter now retries a transfer that receives no bytes for 30 seconds, including stalls before response headers or during the body. It allows three attempts and bypasses the HTTP cache on retries, so a truncated cached piece can be replaced. Slow downloads that continue delivering bytes are allowed to finish. Concurrent readers share the retry; cancelling one reader does not cancel the others. Exhausted retries identify the failing chunk path. HTTP error responses retain the existing caller's retry handling.
 
 This addresses a reproduced transport hang; it does not establish that every 76% pause is caused by transport or certify playable gameplay. In this runtime, the graphics worker labels its first presented frame as 76%, while engine loading may continue. Record the last engine message and data activity alongside the percentage.
