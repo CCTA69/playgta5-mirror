@@ -1,15 +1,17 @@
 /* Serve byte ranges from small immutable static files. Pages may ignore Range.
  * Whole pieces use the browser HTTP cache; bounded RAM and shared pending
  * requests avoid downloading the same piece for concurrent engine reads.
+ * Small archive-header reads retain a separate prefix and cancel the tail.
  */
 (() => {
   'use strict';
   const originalFetch = globalThis.fetch.bind(globalThis);
   const manifest = globalThis.GAME_CHUNKS;
   const cache = new Map(), pending = new Map(), budget = 32 * 1024 * 1024;
-  const idleTimeout = 30000, attempts = 3;
+  const idleTimeout = 30000, attempts = 3, prefixSize = 64 * 1024;
   let cacheBytes = 0;
-  async function downloadPiece(url, size, options) {
+  async function downloadPiece(url, size, options, prefixOnly) {
+    const wanted = prefixOnly ? prefixSize : size;
     let lastError;
     for (let attempt = 0; attempt < attempts; attempt++) {
       const controller = new AbortController();
@@ -22,9 +24,15 @@
         progress();
         // A retry must not keep returning a truncated response from the HTTP cache.
         const res = await originalFetch(url, {cache: attempt ? 'reload' : 'force-cache', priority: options.priority, signal: controller.signal});
-        if (!res.ok) { await res.body?.cancel(); return {failure: {status: res.status, statusText: res.statusText}}; }
+        if (!res.ok) {
+          await res.body?.cancel();
+          // force-cache can retain a temporary error across every caller retry.
+          // Check the server once before preserving its HTTP failure response.
+          if (attempt === 0) continue;
+          return {failure: {status: res.status, statusText: res.statusText}};
+        }
         if (res.status !== 200) { await res.body?.cancel(); throw new Error(`Unexpected chunk status ${res.status}`); }
-        const bytes = new Uint8Array(size);
+        const bytes = new Uint8Array(wanted);
         let received = 0;
         reader = res.body.getReader();
         for (;;) {
@@ -32,10 +40,18 @@
           if (done) break;
           if (!value.byteLength) continue;
           progress();
-          if (received + value.byteLength > size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received more bytes`);
-          bytes.set(value, received); received += value.byteLength;
+          if (!prefixOnly && received + value.byteLength > size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received more bytes`);
+          const take = Math.min(value.byteLength, wanted - received);
+          bytes.set(value.subarray(0, take), received); received += take;
+          if (prefixOnly && received === wanted) {
+            // Archive mounting reads tiny headers. Stop the unused body even
+            // when the static host ignores Range; cache this prefix separately.
+            reader.cancel().catch(() => {});
+            controller.abort();
+            return {bytes};
+          }
         }
-        if (received !== size) throw new Error(`Truncated or invalid game chunk: expected ${size}, received ${received}`);
+        if (received !== wanted) throw new Error(`Truncated or invalid game chunk: expected ${wanted}, received ${received}`);
         return {bytes};
       } catch (error) {
         lastError = error;
@@ -45,8 +61,10 @@
     }
     throw new Error(`Game chunk ${url.pathname} failed after ${attempts} attempts: ${lastError?.message || lastError}`);
   }
-  async function piece(url, size, options) {
-    const key = url.href;
+  async function piece(url, size, options, prefixOnly) {
+    const fullKey = url.href, prefixKey = fullKey + '#prefix';
+    // A complete piece can satisfy either kind of read, never the reverse.
+    const key = cache.has(fullKey) || !prefixOnly ? fullKey : prefixKey;
     if (cache.has(key)) {
       const bytes = cache.get(key); cache.delete(key); cache.set(key, bytes);
       return {bytes};
@@ -54,9 +72,12 @@
     if (pending.has(key)) return pending.get(key);
     const job = (async () => {
       // At most 4 MiB per transfer. A reader must not abort another reader's shared transfer.
-      const result = await downloadPiece(url, size, options);
+      const result = await downloadPiece(url, size, options, prefixOnly);
       if (result.failure) return result;
       const {bytes} = result;
+      if (!prefixOnly && cache.has(prefixKey)) {
+        cacheBytes -= cache.get(prefixKey).byteLength; cache.delete(prefixKey);
+      }
       while (cacheBytes + bytes.length > budget && cache.size) {
         const oldest = cache.keys().next().value;
         cacheBytes -= cache.get(oldest).byteLength; cache.delete(oldest);
@@ -112,7 +133,9 @@
       controller.signal.throwIfAborted();
       const index = Math.floor(position / step);
       const pieceURL = new URL(file.url ? file.url + url.search : `${file.prefix}/${String(index).padStart(4, '0')}.bin`, location.origin);
-      return waitForPiece(piece(pieceURL, Math.min(step, size - index * step), options), controller.signal);
+      const partSize = Math.min(step, size - index * step);
+      const prefixOnly = !!range && partSize > prefixSize && end - index * step < prefixSize;
+      return waitForPiece(piece(pieceURL, partSize, options, prefixOnly), controller.signal);
     }
     let ready;
     try { ready = await next(); if (ready.failure) { cleanup(); return new Response(null, ready.failure); } }
